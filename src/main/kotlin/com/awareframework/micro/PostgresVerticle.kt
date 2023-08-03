@@ -195,8 +195,10 @@ class PostgresVerticle : AbstractVerticle() {
    * Create a database table if it doesn't exist
    */
   fun createTable(table: String): Future<Boolean> {
+    println("createTable")
     val promise = Promise.promise<Boolean>()
     sqlClient.getConnection { connectionResult ->
+      println("getConnection")
       if (connectionResult.succeeded()) {
         val connect = connectionResult.result()
         val queryCreateTable = "CREATE TABLE IF NOT EXISTS \"$table\" (\"_id\" SERIAL PRIMARY KEY, \"timestamp\" DOUBLE PRECISION NOT NULL, \"device_id\" UUID NOT NULL, \"data\" JSONB NOT NULL)"

@@ -3,6 +3,7 @@ package com.awareframework.micro
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 
+import io.vertx.core.MultiMap
 import io.vertx.core.Vertx
 import io.vertx.ext.web.client.WebClient
 import io.vertx.ext.web.codec.BodyCodec
@@ -42,7 +43,9 @@ class TestMainVerticle {
       println("aware-config.json does not exist at: " + targetAwareConfigJson)
     }
 
-    val testAwareConfigJson = Paths.get(javaClass.getClassLoader().getResource("aware-config.json").toURI())
+    val testConfigPath = System.getenv("AWARE_TEST_CONFIG_PATH") ?: "aware-config.json"
+
+    val testAwareConfigJson = Paths.get(javaClass.getClassLoader().getResource(testConfigPath).toURI())
     Files.copy(testAwareConfigJson, targetAwareConfigJson, StandardCopyOption.REPLACE_EXISTING)
   }
 
@@ -78,6 +81,29 @@ class TestMainVerticle {
           testContext.verify {
             assertEquals(200, resp.statusCode())
             assertTrue(resp.body().startsWith("Hello from AWARE Micro!"))
+            requestCheckpoint.flag();
+          }
+        })
+    })
+  }
+
+  @Test
+  fun testPostInsert(vertx: Vertx, testContext: VertxTestContext) {
+    val webClient = WebClient.create(vertx)
+
+    val deploymentCheckpoint = testContext.checkpoint()
+    val requestCheckpoint = testContext.checkpoint()
+
+    vertx.deployVerticle(MainVerticle(), testContext.succeeding { _ ->
+      deploymentCheckpoint.flag()
+
+      val form = MultiMap.caseInsensitiveMultiMap()
+      form.set("device_id", "550e8400-e29b-41d4-a716-446655449990")
+      form.set("data", "[{\"timestamp\":1659349990}]")
+
+      webClient.post(8080, "localhost", "/index.php/1/4lph4num3ric/testtable/insert")
+        .sendForm(form, testContext.succeeding { resp ->
+          testContext.verify {
             requestCheckpoint.flag();
           }
         })
